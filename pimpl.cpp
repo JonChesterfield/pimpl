@@ -77,15 +77,10 @@ example::example(const example& other)
   new (&state) example_impl(impl);
 }
 
-example& example::operator=(const example& other)
+example &example::operator=(const example &other)
 {
-  const example_impl& impl =
-      *(reinterpret_cast<const example_impl*>(&(other.state)));
-  if (&other != this)
-    {
-      (reinterpret_cast<example_impl*>(&(this->state)))->~example_impl();
-      new (&state) example_impl(impl);
-    }
+  *(reinterpret_cast<example_impl *>(&(this->state))) =
+    *(reinterpret_cast<const example_impl *>(&(other.state)));
   return *this;
 }
 
@@ -95,12 +90,10 @@ example::example(example&& other)
   new (&state) example_impl(std::move(impl));
 }
 
-example& example::operator=(example&& other)
+example &example::operator=(example &&other)
 {
-  example_impl& impl = *(reinterpret_cast<example_impl*>(&(other.state)));
-  assert(this != &other); // could be persuaded to use an if() here
-  (reinterpret_cast<example_impl*>(&(this->state)))->~example_impl();
-  new (&state) example_impl(std::move(impl));
+  *(reinterpret_cast<example_impl *>(&(this->state))) =
+    std::move(*(reinterpret_cast<example_impl *>(&(other.state))));
   return *this;
 }
 
