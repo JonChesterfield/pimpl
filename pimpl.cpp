@@ -38,23 +38,23 @@ class example_impl
   std::vector<int> local_state;
 };
 
-static_assert(sizeof(example_impl) == detail::capacity,
+static_assert(sizeof(example_impl) == example::capacity,
               "example capacity has diverged");
 
-static_assert(alignof(example_impl) == detail::alignment,
+static_assert(alignof(example_impl) == example::alignment,
               "example alignment has diverged");
 
 // Forwarding methods - free to vary the names relative to the api
 void example::first_method(int x)
 {
-  example_impl& impl = *(reinterpret_cast<example_impl*>(&(this->state)));
+  example_impl &impl = *(reinterpret_cast<example_impl *>(&(this->state)));
 
   impl.insert(x);
 }
 
 int example::second_method()
 {
-  example_impl& impl = *(reinterpret_cast<example_impl*>(&(this->state)));
+  example_impl &impl = *(reinterpret_cast<example_impl *>(&(this->state)));
 
   return impl.retrieve();
 }
@@ -67,33 +67,33 @@ example::example(int x) { new (&state) example_impl{x}; }
 
 example::~example()
 {
-  (reinterpret_cast<example_impl*>(&state))->~example_impl();
+  (reinterpret_cast<example_impl *>(&state))->~example_impl();
 }
 
-example::example(const example& other)
+example::example(const example &other)
 {
-  const example_impl& impl =
-      *(reinterpret_cast<const example_impl*>(&(other.state)));
+  const example_impl &impl =
+      *(reinterpret_cast<const example_impl *>(&(other.state)));
   new (&state) example_impl(impl);
 }
 
 example &example::operator=(const example &other)
 {
   *(reinterpret_cast<example_impl *>(&(this->state))) =
-    *(reinterpret_cast<const example_impl *>(&(other.state)));
+      *(reinterpret_cast<const example_impl *>(&(other.state)));
   return *this;
 }
 
-example::example(example&& other)
+example::example(example &&other)
 {
-  example_impl& impl = *(reinterpret_cast<example_impl*>(&(other.state)));
+  example_impl &impl = *(reinterpret_cast<example_impl *>(&(other.state)));
   new (&state) example_impl(std::move(impl));
 }
 
 example &example::operator=(example &&other)
 {
   *(reinterpret_cast<example_impl *>(&(this->state))) =
-    std::move(*(reinterpret_cast<example_impl *>(&(other.state))));
+      std::move(*(reinterpret_cast<example_impl *>(&(other.state))));
   return *this;
 }
 

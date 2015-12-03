@@ -19,16 +19,26 @@
 #define PIMPL_HPP
 #include <cstddef>
 
-namespace detail
+namespace pimpl
 {
-// Keeping these up to date is unfortunate
-// More hassle when supporting various platforms
-// with different ideas about these values.
-const std::size_t capacity = 24;
-const std::size_t alignment = 8;
+template <typename Derived, std::size_t C, std::size_t A>
+class base
+{
+ public:
+  static const std::size_t capacity{C};
+  static const std::size_t alignment{A};
+
+ protected:
+  base(){};
+  unsigned char state alignas(A)[C];
+
+ private:
+  Derived *derived() { return static_cast<Derived *>(this); }
+  const Derived *derived() const { return static_cast<Derived const *>(this); }
+};
 }
 
-class example final
+class example final : public pimpl::base<example, 24, 8>
 {
  public:
   // Constructors
@@ -45,11 +55,6 @@ class example final
   example &operator=(const example &);
   example(example &&);
   example &operator=(example &&);
-
-  // No public state available (it's all in the implementation)
- private:
-  // No private functions (they're also in the implementation)
-  unsigned char state alignas(detail::alignment)[detail::capacity];
 };
 
 #endif
