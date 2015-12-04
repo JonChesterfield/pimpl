@@ -36,30 +36,15 @@ template <typename Target>
 class base
 {
  private:
-  // A layer of indirection
-  template <typename Internal>
-  struct extract
+  const Target &extract(base const &instance)
   {
-    const Internal &operator()(base const &instance)
-    {
-      return *(reinterpret_cast<const Internal *>(&(instance.state)));
-    }
-
-    Internal &operator()(base &instance)
-    {
-      return *(reinterpret_cast<Internal *>(&(instance.state)));
-    }
-
-    const Internal *operator()(base const *instance)
-    {
-      return reinterpret_cast<const Internal *>(&(instance->state));
-    }
-
-    Internal *operator()(base *instance)
-    {
-      return reinterpret_cast<Internal *>(&(instance->state));
-    }
-  };
+    return *(reinterpret_cast<const Target *>(&(instance.state)));
+  }
+  Target &extract(base &instance)
+  {
+    return *(reinterpret_cast<Target *>(&(instance.state)));
+  }
+  Target *self() { return &(extract(*this)); }
 
  protected:
   base(){};
@@ -69,45 +54,26 @@ class base
   static const std::size_t capacity{detail::capacity};
   static const std::size_t alignment{detail::alignment};
 
-  // Another layer of indirection
-  template <typename I>
-  void base_destroy()
+  ~base() { self()->~Target(); }
+  base(const base &other)
   {
-    extract<I>{}(*this).~I();
+    const Target &impl = extract(other);
+    new (self()) Target(impl);
   }
-  template <typename I>
-  void base_copy(const base &other)
+  base &operator=(const base &other)
   {
-    const I &impl = extract<I>{}(other);
-    new (extract<I>{}(this)) I(impl);
-  }
-  template <typename I>
-  base &base_copy_assign(const base &other)
-  {
-    extract<I>{}(*this) = extract<I>{}(other);
+    *self() = extract(other);
     return *this;
   }
-  template <typename I>
-  void base_move(base &&other)
+  base(base &&other)
   {
-    I &impl = extract<I>{}(other);
-    new (extract<I>{}(this)) I(std::move(impl));
+    Target &impl = extract(other);
+    new (self()) Target(std::move(impl));
   }
-  template <typename I>
-  base &base_move_assign(base &&other)
-  {
-    extract<I>{}(*this) = std::move(extract<I>{}(other));
-    return *this;
-  }
-
-  // The incomplete type is sufficient to define these functions
-  ~base() { base_destroy<Target>(); }
-  base(const base &other) { base_copy<Target>(other); }
-  base &operator=(const base &other) { return base_copy_assign<Target>(other); }
-  base(base &&other) { base_move<Target>(std::move(other)); }
   base &operator=(base &&other)
   {
-    return base_move_assign<Target>(std::move(other));
+    *self() = std::move(extract(other));
+    return *this;
   }
 };
 }
