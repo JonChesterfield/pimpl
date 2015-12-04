@@ -61,6 +61,47 @@ int example::second_method()
   return impl.retrieve();
 }
 
+example::example()
+{
+  new (&state) example_impl{};
+}
+example::example(int x)
+{
+  new (&state) example_impl{x};
+}
+
+// implementation :(
+namespace pimpl
+{
+// Public functions in terms of shim functions
+  template <typename D,std::size_t C,std::size_t A>
+  base<D,C,A>::~base()
+{
+  base_destroy<example_impl>();
+}
+  template <typename D,std::size_t C,std::size_t A>
+base<D,C,A>::base(const base<D,C,A> &other)
+{
+  base_copy<example_impl>(other);
+}
+  template <typename D,std::size_t C,std::size_t A>
+base<D,C,A> &base<D,C,A>::operator=(const base<D,C,A> &other)
+{
+  return base_copy_assign<example_impl>(other);
+}
+  template <typename D,std::size_t C,std::size_t A>
+base<D,C,A>::base(base<D,C,A> &&other)
+{
+  base_move<example_impl>(std::move(other));
+}
+  template <typename D,std::size_t C,std::size_t A>
+base<D,C,A> &base<D,C,A>::operator=(base<D,C,A> &&other)
+{
+  return base_move_assign<example_impl>(std::move(other));
+}
+}
+
+
 static_assert(sizeof(example_impl) == example::capacity,
               "example capacity has diverged");
 

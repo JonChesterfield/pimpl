@@ -26,6 +26,9 @@ namespace pimpl
 template <typename Target, std::size_t Cap, std::size_t Align>
 class base
 {
+protected:
+  base() {}
+  
  protected:
   const Target &extract(base const &instance)
   {
@@ -42,6 +45,7 @@ class base
   static const std::size_t alignment{Align};
 
   // Forward constructors through to implementation
+  /*
   base() { new (&state) Target{}; }
   template <typename A, typename B>
   using copy_ctor_workaround = typename std::enable_if<
@@ -58,33 +62,47 @@ class base
     new (&state) Target{std::forward<A>(a), std::forward<B>(b),
                         std::forward<Args>(args)...};
   }
-  // Forward destructor through to implementation
-  ~base() { self()->~Target(); }
-
-  // Forward copy & move through to implementation
-  base(const base &other)
+  */
+  
+  template <typename I>
+  void base_destroy()
   {
-    const Target &impl = extract(other);
-    new (self()) Target(impl);
+    self()->~I();
   }
-  base &operator=(const base &other)
+  template <typename I>
+  void base_copy(const base &other)
+  {
+    const I &impl = extract(other);
+    new (self()) I(impl);
+  }
+  template <typename I>
+  base &base_copy_assign(const base &other)
   {
     *self() = extract(other);
     return *this;
   }
-  base(base &&other)
+  template <typename I>
+  void base_move(base &&other)
   {
-    Target &impl = extract(other);
-    new (self()) Target(std::move(impl));
+    I &impl = extract(other);
+    new (self()) I(std::move(impl));
   }
-  base &operator=(base &&other)
+  template <typename I>
+  base &base_move_assign(base &&other)
   {
     *self() = std::move(extract(other));
     return *this;
   }
 
+  ~base();
+  base(const base &other);
+  base &operator=(const base &other);
+  base(base &&other);
+  base &operator=(base &&other);
+  
+
 // Forward operators, provided they exist
-#include "pimpl_operators.i"
+// #include "pimpl_operators.i"
 
  protected:
   unsigned char state alignas(alignment)[capacity];
@@ -97,7 +115,8 @@ class example_impl;
 class example final : public pimpl::base<example_impl, 24, 8>
 {
  public:
-  using base::base;  // Pull constructors out of the example_impl
+  example();
+  example(int);
 
   // Some methods
   void first_method(int);
