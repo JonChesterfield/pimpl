@@ -12,7 +12,10 @@ all:	${EXE}
 valgrind:	${EXE}
 	valgrind ./${EXE}
 
-pimpl.o:	pimpl.cpp pimpl.hpp
+pimpl_operators.i: gen_pimpl_operators.py
+	python $< > $@
+
+pimpl.o:	pimpl.cpp pimpl.hpp pimpl_operators.i
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
 catch.o:	catch.cpp catch.hpp
@@ -22,4 +25,5 @@ ${EXE}:	pimpl.o catch.o
 	${CXX} ${CXXFLAGS} $^ -o $@
 
 clean:
+	rm -f *.i
 	rm -f *.o *.exe

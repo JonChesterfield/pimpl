@@ -35,7 +35,7 @@ namespace pimpl
 template <typename Target>
 class base
 {
- private:
+ protected:
   const Target &extract(base const &instance)
   {
     return *(reinterpret_cast<const Target *>(&(instance.state)));
@@ -94,6 +94,10 @@ class base
     *self() = std::move(extract(other));
     return *this;
   }
+
+  // Forward operators, provided they exist
+  #include "pimpl_operators.i"
+
 };
 }
 

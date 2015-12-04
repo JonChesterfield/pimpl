@@ -32,6 +32,16 @@ class example_impl
 
   int retrieve() { return local_state.back(); }
 
+  bool operator==(example_impl const & other)
+  {
+    return local_state == other.local_state;
+  }
+  bool operator!=(example_impl const & other)
+  {
+    return !(*this == other);
+  }
+
+  
  private:
   // Potentially exotic local state
   // For example, maybe we don't want std::vector in the header
@@ -58,6 +68,7 @@ int example::second_method()
 
   return impl.retrieve();
 }
+
 
 // A whole lot of boilerplate forwarding the standard operations
 // This is (believe it or not...) written for clarity, so none call each other
@@ -100,3 +111,15 @@ TEST_CASE("behaviour")
   a.first_method(2);
   CHECK(a.second_method() == 6);
 }
+
+TEST_CASE("equality")
+{
+  CHECK(example {} == example {});
+  CHECK(example{4} == example{4});
+}
+
+TEST_CASE("inequality")
+{
+  CHECK(example {0} != example{1});
+}
+
