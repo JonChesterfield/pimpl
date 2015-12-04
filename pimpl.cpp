@@ -16,7 +16,6 @@
 // along with pimpl.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "pimpl.hpp"
-#include "catch.hpp"
 
 #include <cassert>
 #include <vector>
@@ -41,18 +40,11 @@ class example_impl
     return !(*this == other);
   }
 
-  
  private:
   // Potentially exotic local state
   // For example, maybe we don't want std::vector in the header
   std::vector<int> local_state;
 };
-
-static_assert(sizeof(example_impl) == example::capacity,
-              "example capacity has diverged");
-
-static_assert(alignof(example_impl) == example::alignment,
-              "example alignment has diverged");
 
 // Forwarding methods - free to vary the names relative to the api
 void example::first_method(int x)
@@ -69,57 +61,14 @@ int example::second_method()
   return impl.retrieve();
 }
 
+static_assert(sizeof(example_impl) == example::capacity,
+              "example capacity has diverged");
 
-// A whole lot of boilerplate forwarding the standard operations
-// This is (believe it or not...) written for clarity, so none call each other
-
-//example::example() { new (&state) example_impl{}; }
-//example::example(int x) { new (&state) example_impl{x}; }
+static_assert(alignof(example_impl) == example::alignment,
+              "example alignment has diverged");
 
 namespace pimpl
 {
-  template class base<example_impl>;
-}
-
-// Verify that we can compile the various operations
-TEST_CASE("default constructor") { example a; }
-TEST_CASE("other constructor") { example a{3}; }
-TEST_CASE("copy ctor")
-{
-  example a;
-  example b{a};
-}
-TEST_CASE("copy assign ctor")
-{
-  example a;
-  example b = a;
-}
-TEST_CASE("move ctor")
-{
-  example a;
-  example b{std::move(a)};
-}
-TEST_CASE("move assign ctor")
-{
-  example a;
-  example b = std::move(a);
-}
-
-TEST_CASE("behaviour")
-{
-  example a;
-  a.first_method(2);
-  CHECK(a.second_method() == 6);
-}
-
-TEST_CASE("equality")
-{
-  CHECK(example {} == example {});
-  CHECK(example{4} == example{4});
-}
-
-TEST_CASE("inequality")
-{
-  CHECK(example {0} != example{1});
+   template class base<example_impl,sizeof(example_impl),alignof(example_impl)>;
 }
 

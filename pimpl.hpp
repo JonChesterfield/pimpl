@@ -21,18 +21,9 @@
 
 #include <utility>  // std::move
 
-namespace detail
-{
-// Keeping these up to date is unfortunate
-// More hassle when supporting various platforms
-// with different ideas about these values.
-const std::size_t capacity = 24;
-const std::size_t alignment = 8;
-}
-
 namespace pimpl
 {
-template <typename Target>
+template <typename Target, std::size_t Cap, std::size_t Align>
 class base
 {
  protected:
@@ -46,12 +37,9 @@ class base
   }
   Target *self() { return &(extract(*this)); }
 
- protected:
-  unsigned char state alignas(detail::alignment)[detail::capacity];
-
  public:
-  static const std::size_t capacity{detail::capacity};
-  static const std::size_t alignment{detail::alignment};
+  static const std::size_t capacity{Cap};
+  static const std::size_t alignment{Align};
 
   // Forward constructors through to implementation
   base() { new (&state) Target{}; }
@@ -95,17 +83,18 @@ class base
     return *this;
   }
 
-  // Forward operators, provided they exist
-  #include "pimpl_operators.i"
+// Forward operators, provided they exist
+#include "pimpl_operators.i"
 
+ protected:
+  unsigned char state alignas(alignment)[capacity];
 };
 }
 
 // Sadly, we leak the name of the internal class
-// I can't currently see a way around this that doesn't involve
-// typing out the base(...) functions in the implementation.
+// We also explicitly specify the required size and alignment.
 class example_impl;
-class example final : public pimpl::base<example_impl>
+class example final : public pimpl::base<example_impl, 24, 8>
 {
  public:
   using base::base;  // Pull constructors out of the example_impl
