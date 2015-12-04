@@ -65,43 +65,99 @@ int example::second_method()
 example::example() { new (&state) example_impl{}; }
 example::example(int x) { new (&state) example_impl{x}; }
 
-example::~example()
+namespace pimpl
 {
-  (reinterpret_cast<example_impl *>(&state))->~example_impl();
+// Out of line implementation of extract
+template <typename D>
+template <typename Internal>
+const Internal &base<D>::extract<Internal>::operator()(base<D> const &instance)
+{
+  return *(reinterpret_cast<const Internal *>(&(instance.state)));
 }
 
-example::example(const example &other)
+template <typename D>
+template <typename Internal>
+Internal &base<D>::extract<Internal>::operator()(base<D> &instance)
 {
-  const example_impl &impl =
-      *(reinterpret_cast<const example_impl *>(&(other.state)));
-  new (&state) example_impl(impl);
+  return *(reinterpret_cast<Internal *>(&(instance.state)));
 }
 
-example &example::operator=(const example &other)
+template <typename D>
+template <typename Internal>
+const Internal *base<D>::extract<Internal>::operator()(base<D> const *instance)
 {
-  *(reinterpret_cast<example_impl *>(&(this->state))) =
-      *(reinterpret_cast<const example_impl *>(&(other.state)));
+  return reinterpret_cast<const Internal *>(&(instance->state));
+}
+
+template <typename D>
+template <typename Internal>
+Internal *base<D>::extract<Internal>::operator()(base<D> *instance)
+{
+  return reinterpret_cast<Internal *>(&(instance->state));
+}
+
+// Public functions in terms of extract<>
+template <typename D>
+base<D>::~base()
+{
+  extract<example_impl>{}(*this).~example_impl();
+}
+template <typename D>
+base<D>::base(const base<D> &other)
+{
+  const example_impl &impl = extract<example_impl>{}(other);
+  new (extract<example_impl>{}(this)) example_impl(impl);
+}
+template <typename D>
+base<D> &base<D>::operator=(const base<D> &other)
+{
+  extract<example_impl>{}(*this) = extract<example_impl>{}(other);
+  return *this;
+}
+template <typename D>
+base<D>::base(base<D> &&other)
+{
+  example_impl &impl = extract<example_impl>{}(other);
+  new (extract<example_impl>{}(this)) example_impl(std::move(impl));
+}
+template <typename D>
+base<D> &base<D>::operator=(base<D> &&other)
+{
+  extract<example_impl>{}(*this) = std::move(extract<example_impl>{}(other));
   return *this;
 }
 
-example::example(example &&other)
-{
-  example_impl &impl = *(reinterpret_cast<example_impl *>(&(other.state)));
-  new (&state) example_impl(std::move(impl));
+// Instantiate the combination of types we have in mind explicitly
+template struct base<example>::extract<example_impl>;
 }
 
-example &example::operator=(example &&other)
+// Verify that we can compile the various operations
+TEST_CASE("default constructor") { example a; }
+TEST_CASE("other constructor") { example a{3}; }
+TEST_CASE("copy ctor")
 {
-  *(reinterpret_cast<example_impl *>(&(this->state))) =
-      std::move(*(reinterpret_cast<example_impl *>(&(other.state))));
-  return *this;
+  example a;
+  example b{a};
+}
+TEST_CASE("copy assign ctor")
+{
+  example a;
+  example b = a;
+}
+TEST_CASE("move ctor")
+{
+  example a;
+  example b{std::move(a)};
+}
+TEST_CASE("move assign ctor")
+{
+  example a;
+  example b = std::move(a);
 }
 
-TEST_CASE("init")
+TEST_CASE("behaviour")
 {
-  example an_example;
-  example another_example{3};
-
-  example copied(an_example);
-  example moved(std::move(another_example));
+  example a;
+  a.first_method(2);
+  CHECK(a.second_method() == 6);
 }

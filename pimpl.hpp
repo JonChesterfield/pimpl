@@ -19,26 +19,51 @@
 #define PIMPL_HPP
 #include <cstddef>
 
+namespace detail
+{
+// Keeping these up to date is unfortunate
+// More hassle when supporting various platforms
+// with different ideas about these values.
+const std::size_t capacity = 24;
+const std::size_t alignment = 8;
+}
+
 namespace pimpl
 {
-template <typename Derived, std::size_t C, std::size_t A>
+template <typename Derived>
 class base
 {
- public:
-  static const std::size_t capacity{C};
-  static const std::size_t alignment{A};
+private:
+  template <typename Internal>
+  struct extract
+  {
+    const Internal &operator()(base const &instance);
+    Internal &operator()(base &instance);
+    const Internal *operator()(base const *instance);
+    Internal *operator()(base *instance);
+  };
 
- protected:
-  base(){};
-  unsigned char state alignas(A)[C];
-
- private:
   Derived *derived() { return static_cast<Derived *>(this); }
   const Derived *derived() const { return static_cast<Derived const *>(this); }
+
+protected:
+  base(){};
+  unsigned char state alignas(detail::alignment)[detail::capacity];
+
+ public:
+  static const std::size_t capacity{detail::capacity};
+  static const std::size_t alignment{detail::alignment};
+
+  ~base();
+  base(const base &);
+  base &operator=(const base &);
+  base(base &&);
+  base &operator=(base &&);
+
 };
 }
 
-class example final : public pimpl::base<example, 24, 8>
+class example final : public pimpl::base<example>
 {
  public:
   // Constructors
@@ -48,13 +73,6 @@ class example final : public pimpl::base<example, 24, 8>
   // Some methods
   void first_method(int);
   int second_method();
-
-  // Set of standard operations
-  ~example();
-  example(const example &);
-  example &operator=(const example &);
-  example(example &&);
-  example &operator=(example &&);
 };
 
 #endif
