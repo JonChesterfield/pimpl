@@ -47,14 +47,33 @@ class base
   Target *self() { return &(extract(*this)); }
 
  protected:
-  base(){};
   unsigned char state alignas(detail::alignment)[detail::capacity];
 
  public:
   static const std::size_t capacity{detail::capacity};
   static const std::size_t alignment{detail::alignment};
 
+  // Forward constructors through to implementation
+  base() { new (&state) Target{}; }
+  template <typename A, typename B>
+  using copy_ctor_workaround = typename std::enable_if<
+      !std::is_base_of<A,
+                       typename std::remove_reference<B>::type>::value>::type;
+  template <typename T, typename X = copy_ctor_workaround<base, T>>
+  base(T &&t)
+  {
+    new (&state) Target{std::forward<T>(t)};
+  }
+  template <typename A, typename B, typename... Args>
+  base(A &&a, B &&b, Args &&... args)
+  {
+    new (&state) Target{std::forward<A>(a), std::forward<B>(b),
+                        std::forward<Args>(args)...};
+  }
+  // Forward destructor through to implementation
   ~base() { self()->~Target(); }
+
+  // Forward copy & move through to implementation
   base(const base &other)
   {
     const Target &impl = extract(other);
@@ -85,9 +104,7 @@ class example_impl;
 class example final : public pimpl::base<example_impl>
 {
  public:
-  // Constructors
-  example();
-  example(int);
+  using base::base;  // Pull constructors out of the example_impl
 
   // Some methods
   void first_method(int);

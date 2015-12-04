@@ -62,8 +62,8 @@ int example::second_method()
 // A whole lot of boilerplate forwarding the standard operations
 // This is (believe it or not...) written for clarity, so none call each other
 
-example::example() { new (&state) example_impl{}; }
-example::example(int x) { new (&state) example_impl{x}; }
+//example::example() { new (&state) example_impl{}; }
+//example::example(int x) { new (&state) example_impl{x}; }
 
 namespace pimpl
 {
