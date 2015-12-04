@@ -67,68 +67,7 @@ example::example(int x) { new (&state) example_impl{x}; }
 
 namespace pimpl
 {
-// Out of line implementation of extract
-template <typename D>
-template <typename Internal>
-const Internal &base<D>::extract<Internal>::operator()(base<D> const &instance)
-{
-  return *(reinterpret_cast<const Internal *>(&(instance.state)));
-}
-
-template <typename D>
-template <typename Internal>
-Internal &base<D>::extract<Internal>::operator()(base<D> &instance)
-{
-  return *(reinterpret_cast<Internal *>(&(instance.state)));
-}
-
-template <typename D>
-template <typename Internal>
-const Internal *base<D>::extract<Internal>::operator()(base<D> const *instance)
-{
-  return reinterpret_cast<const Internal *>(&(instance->state));
-}
-
-template <typename D>
-template <typename Internal>
-Internal *base<D>::extract<Internal>::operator()(base<D> *instance)
-{
-  return reinterpret_cast<Internal *>(&(instance->state));
-}
-
-// Public functions in terms of extract<>
-template <typename D>
-base<D>::~base()
-{
-  extract<example_impl>{}(*this).~example_impl();
-}
-template <typename D>
-base<D>::base(const base<D> &other)
-{
-  const example_impl &impl = extract<example_impl>{}(other);
-  new (extract<example_impl>{}(this)) example_impl(impl);
-}
-template <typename D>
-base<D> &base<D>::operator=(const base<D> &other)
-{
-  extract<example_impl>{}(*this) = extract<example_impl>{}(other);
-  return *this;
-}
-template <typename D>
-base<D>::base(base<D> &&other)
-{
-  example_impl &impl = extract<example_impl>{}(other);
-  new (extract<example_impl>{}(this)) example_impl(std::move(impl));
-}
-template <typename D>
-base<D> &base<D>::operator=(base<D> &&other)
-{
-  extract<example_impl>{}(*this) = std::move(extract<example_impl>{}(other));
-  return *this;
-}
-
-// Instantiate the combination of types we have in mind explicitly
-template struct base<example>::extract<example_impl>;
+  template class base<example_impl>;
 }
 
 // Verify that we can compile the various operations

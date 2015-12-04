@@ -19,6 +19,8 @@
 #define PIMPL_HPP
 #include <cstddef>
 
+#include <utility>  // std::move
+
 namespace detail
 {
 // Keeping these up to date is unfortunate
@@ -30,23 +32,36 @@ const std::size_t alignment = 8;
 
 namespace pimpl
 {
-template <typename Derived>
+template <typename Target>
 class base
 {
-private:
+ private:
+  // A layer of indirection
   template <typename Internal>
   struct extract
   {
-    const Internal &operator()(base const &instance);
-    Internal &operator()(base &instance);
-    const Internal *operator()(base const *instance);
-    Internal *operator()(base *instance);
+    const Internal &operator()(base const &instance)
+    {
+      return *(reinterpret_cast<const Internal *>(&(instance.state)));
+    }
+
+    Internal &operator()(base &instance)
+    {
+      return *(reinterpret_cast<Internal *>(&(instance.state)));
+    }
+
+    const Internal *operator()(base const *instance)
+    {
+      return reinterpret_cast<const Internal *>(&(instance->state));
+    }
+
+    Internal *operator()(base *instance)
+    {
+      return reinterpret_cast<Internal *>(&(instance->state));
+    }
   };
 
-  Derived *derived() { return static_cast<Derived *>(this); }
-  const Derived *derived() const { return static_cast<Derived const *>(this); }
-
-protected:
+ protected:
   base(){};
   unsigned char state alignas(detail::alignment)[detail::capacity];
 
@@ -54,16 +69,54 @@ protected:
   static const std::size_t capacity{detail::capacity};
   static const std::size_t alignment{detail::alignment};
 
-  ~base();
-  base(const base &);
-  base &operator=(const base &);
-  base(base &&);
-  base &operator=(base &&);
+  // Another layer of indirection
+  template <typename I>
+  void base_destroy()
+  {
+    extract<I>{}(*this).~I();
+  }
+  template <typename I>
+  void base_copy(const base &other)
+  {
+    const I &impl = extract<I>{}(other);
+    new (extract<I>{}(this)) I(impl);
+  }
+  template <typename I>
+  base &base_copy_assign(const base &other)
+  {
+    extract<I>{}(*this) = extract<I>{}(other);
+    return *this;
+  }
+  template <typename I>
+  void base_move(base &&other)
+  {
+    I &impl = extract<I>{}(other);
+    new (extract<I>{}(this)) I(std::move(impl));
+  }
+  template <typename I>
+  base &base_move_assign(base &&other)
+  {
+    extract<I>{}(*this) = std::move(extract<I>{}(other));
+    return *this;
+  }
 
+  // The incomplete type is sufficient to define these functions
+  ~base() { base_destroy<Target>(); }
+  base(const base &other) { base_copy<Target>(other); }
+  base &operator=(const base &other) { return base_copy_assign<Target>(other); }
+  base(base &&other) { base_move<Target>(std::move(other)); }
+  base &operator=(base &&other)
+  {
+    return base_move_assign<Target>(std::move(other));
+  }
 };
 }
 
-class example final : public pimpl::base<example>
+// Sadly, we leak the name of the internal class
+// I can't currently see a way around this that doesn't involve
+// typing out the base(...) functions in the implementation.
+class example_impl;
+class example final : public pimpl::base<example_impl>
 {
  public:
   // Constructors
