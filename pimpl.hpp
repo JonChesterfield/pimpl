@@ -17,110 +17,65 @@
 
 #ifndef PIMPL_HPP
 #define PIMPL_HPP
-#include <cstddef>
-
-#include <utility>  // std::move
+#include <cstddef>      // std::size_t
+#include <type_traits>  // std::enable_if
 
 namespace pimpl
 {
+template <typename A, typename B>
+using copy_ctor_workaround = typename std::enable_if<
+    !std::is_base_of<A, typename std::remove_reference<B>::type>::value>::type;
+
 template <typename Target, std::size_t Cap, std::size_t Align>
 class base
 {
-protected:
-  base() {}
-  
- protected:
-  const Target &extract(base const &instance)
-  {
-    return *(reinterpret_cast<const Target *>(&(instance.state)));
-  }
-  Target &extract(base &instance)
-  {
-    return *(reinterpret_cast<Target *>(&(instance.state)));
-  }
-  Target *self() { return &(extract(*this)); }
-
- public:
+public:
+  typedef Target ImplType;
   static const std::size_t capacity{Cap};
   static const std::size_t alignment{Align};
-
-  // Forward constructors through to implementation
-  /*
-  base() { new (&state) Target{}; }
-  template <typename A, typename B>
-  using copy_ctor_workaround = typename std::enable_if<
-      !std::is_base_of<A,
-                       typename std::remove_reference<B>::type>::value>::type;
-  template <typename T, typename X = copy_ctor_workaround<base, T>>
-  base(T &&t)
-  {
-    new (&state) Target{std::forward<T>(t)};
-  }
-  template <typename A, typename B, typename... Args>
-  base(A &&a, B &&b, Args &&... args)
-  {
-    new (&state) Target{std::forward<A>(a), std::forward<B>(b),
-                        std::forward<Args>(args)...};
-  }
-  */
   
-  template <typename I>
-  void base_destroy()
-  {
-    self()->~I();
-  }
-  template <typename I>
-  void base_copy(const base &other)
-  {
-    const I &impl = extract(other);
-    new (self()) I(impl);
-  }
-  template <typename I>
-  base &base_copy_assign(const base &other)
-  {
-    *self() = extract(other);
-    return *this;
-  }
-  template <typename I>
-  void base_move(base &&other)
-  {
-    I &impl = extract(other);
-    new (self()) I(std::move(impl));
-  }
-  template <typename I>
-  base &base_move_assign(base &&other)
-  {
-    *self() = std::move(extract(other));
-    return *this;
-  }
+ protected:
+  unsigned char state alignas(alignment)[capacity];
 
+ protected:
+  static const Target &extract(base const &instance);
+  static Target &extract(base &instance);
+  Target *self();
+
+public:
+  // Forward constructors through to implementation
+  base();
+  template <typename A, typename X = pimpl::copy_ctor_workaround<base, A>>
+  base(A &&a);
+  template <typename A, typename B, typename... Args>
+  base(A &&a, B &&b, Args &&... args);
+
+  // Forward destructor, copy, move
   ~base();
   base(const base &other);
   base &operator=(const base &other);
   base(base &&other);
   base &operator=(base &&other);
+
+  // Logical operators
+private:
+  template <class T, class = decltype(std::declval<T>() == std::declval<T>())>
+  static std::true_type supports_equality_test(const T &);
+  static std::false_type supports_equality_test(...);
+public:
+  template <typename X =
+	    decltype(supports_equality_test(std::declval<Target>()))>
+  bool operator==(base const &other);
+private:
+  template <class T, class = decltype(std::declval<T>() != std::declval<T>())>
+  static std::true_type supports_inequality_test(const T &);
+  static std::false_type supports_inequality_test(...);
+public:
+  template <typename X =
+	    decltype(supports_inequality_test(std::declval<Target>()))>
+  bool operator!=(base const &other);
   
-
-// Forward operators, provided they exist
-// #include "pimpl_operators.i"
-
- protected:
-  unsigned char state alignas(alignment)[capacity];
 };
 }
-
-// Sadly, we leak the name of the internal class
-// We also explicitly specify the required size and alignment.
-class example_impl;
-class example final : public pimpl::base<example_impl, 24, 8>
-{
- public:
-  example();
-  example(int);
-
-  // Some methods
-  void first_method(int);
-  int second_method();
-};
 
 #endif

@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with pimpl.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "pimpl.hpp"
+#include "example.hpp"
+#include "pimpl_impl.hpp"
 
 #include <cassert>
 #include <vector>
@@ -26,19 +27,17 @@ class example_impl
 {
  public:
   example_impl(int x = 0) { insert(x); }
+  example_impl(int a, int b) { insert(a); insert(b);}
 
   void insert(int x) { local_state.push_back(3 * x); }
 
   int retrieve() { return local_state.back(); }
 
-  bool operator==(example_impl const & other)
+  bool operator==(example_impl const &other)
   {
     return local_state == other.local_state;
   }
-  bool operator!=(example_impl const & other)
-  {
-    return !(*this == other);
-  }
+  bool operator!=(example_impl const &other) { return !(*this == other); }
 
  private:
   // Potentially exotic local state
@@ -46,61 +45,15 @@ class example_impl
   std::vector<int> local_state;
 };
 
-// Forwarding methods - free to vary the names relative to the api
 void example::first_method(int x)
 {
-  example_impl &impl = *(reinterpret_cast<example_impl *>(&(this->state)));
-
-  impl.insert(x);
+  self()->insert(x);
 }
 
 int example::second_method()
 {
-  example_impl &impl = *(reinterpret_cast<example_impl *>(&(this->state)));
-
-  return impl.retrieve();
+  return self()->retrieve();
 }
-
-example::example()
-{
-  new (&state) example_impl{};
-}
-example::example(int x)
-{
-  new (&state) example_impl{x};
-}
-
-// implementation :(
-namespace pimpl
-{
-// Public functions in terms of shim functions
-  template <typename D,std::size_t C,std::size_t A>
-  base<D,C,A>::~base()
-{
-  base_destroy<example_impl>();
-}
-  template <typename D,std::size_t C,std::size_t A>
-base<D,C,A>::base(const base<D,C,A> &other)
-{
-  base_copy<example_impl>(other);
-}
-  template <typename D,std::size_t C,std::size_t A>
-base<D,C,A> &base<D,C,A>::operator=(const base<D,C,A> &other)
-{
-  return base_copy_assign<example_impl>(other);
-}
-  template <typename D,std::size_t C,std::size_t A>
-base<D,C,A>::base(base<D,C,A> &&other)
-{
-  base_move<example_impl>(std::move(other));
-}
-  template <typename D,std::size_t C,std::size_t A>
-base<D,C,A> &base<D,C,A>::operator=(base<D,C,A> &&other)
-{
-  return base_move_assign<example_impl>(std::move(other));
-}
-}
-
 
 static_assert(sizeof(example_impl) == example::capacity,
               "example capacity has diverged");
@@ -110,6 +63,11 @@ static_assert(alignof(example_impl) == example::alignment,
 
 namespace pimpl
 {
-   template class base<example_impl,sizeof(example_impl),alignof(example_impl)>;
+  template class base<example_impl, sizeof(example_impl), alignof(example_impl)>;
+  using targ = base<example_impl, sizeof(example_impl), alignof(example_impl)>;
+  // Need to do something to instantiate the forwarding templates.
+  template targ::base(int &&);
+  template targ::base(int &&, int&&);
+  template bool targ::operator==(const targ&);
+  template bool targ::operator!=(const targ&);
 }
-
