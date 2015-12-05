@@ -65,8 +65,8 @@ namespace pimpl
 {
   template class base<example_impl, sizeof(example_impl), alignof(example_impl)>;
   using targ = base<example_impl, sizeof(example_impl), alignof(example_impl)>;
-  // Need to do something to instantiate the forwarding templates.
+  // Need to do something to instantiate the forwarding constructors since
+  // the pimpl header cannot, in general, guess their types.
   template targ::base(int &&);
   template targ::base(int &&, int&&);
-  // Logical operators are implicitly instantiated where available
 }

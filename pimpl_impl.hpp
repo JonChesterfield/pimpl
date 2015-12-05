@@ -19,7 +19,7 @@
 #define PIMPL_IMPL_HPP
 
 #include "pimpl.hpp"
-#include <utility>  // std::move
+#include <utility>
 
 namespace pimpl
 {
