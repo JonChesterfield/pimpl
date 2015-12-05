@@ -57,6 +57,8 @@ public:
   base(base &&other);
   base &operator=(base &&other);
 
+  void instantiator();
+
   // Logical operators
 private:
   template <class T, class = decltype(std::declval<T>() == std::declval<T>())>

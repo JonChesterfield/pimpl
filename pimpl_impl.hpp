@@ -112,6 +112,40 @@ bool base<D, C, A>::operator!=(base<D, C, A> const &other)
 {
   return *self() != extract(other);
 }
+
+namespace detail
+{
+// Instantiate applicable logical operators
+template <typename T, typename D, std::size_t C, std::size_t A>
+struct use_equality
+{
+  void operator()() {}
+};
+template <typename D, std::size_t C, std::size_t A>
+struct use_equality<std::true_type, D, C, A>
+{
+  void operator()(base<D, C, A> &self) { static_cast<void>(self == self); }
+};
+template <typename T, typename D, std::size_t C, std::size_t A>
+struct use_inequality
+{
+  void operator()() {}
+};
+template <typename D, std::size_t C, std::size_t A>
+struct use_inequality<std::true_type, D, C, A>
+{
+  void operator()(base<D, C, A> &self) { static_cast<void>(self != self); }
+};
+}
+
+template <typename D, std::size_t C, std::size_t A>
+void base<D, C, A>::instantiator()
+{
+  detail::use_equality<decltype(supports_equality_test(std::declval<D>())), D,
+                       C, A>{}(*this);
+  detail::use_inequality<decltype(supports_inequality_test(std::declval<D>())),
+                         D, C, A>{}(*this);
+}
 }
 
 #endif  // PIMPL_IMPL_HPP

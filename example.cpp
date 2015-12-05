@@ -68,6 +68,5 @@ namespace pimpl
   // Need to do something to instantiate the forwarding templates.
   template targ::base(int &&);
   template targ::base(int &&, int&&);
-  template bool targ::operator==(const targ&);
-  template bool targ::operator!=(const targ&);
+  // Logical operators are implicitly instantiated where available
 }
